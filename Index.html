@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTCJaSnake</title>
+
+<style>
+body {
+  background-color: #0a0a0a;
+  background-image:
+    linear-gradient(90deg, rgba(0,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(rgba(0,255,255,0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.light {
+  background-color: #f2f2f2;
+  background-image: radial-gradient(#ccc 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: #000;
+}
+
+#wrap {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+canvas {
+  border: 3px solid #0ff;
+  background-color: #111;
+}
+
+.light canvas {
+  background-color: #fff;
+}
+
+#controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 16px;
+}
+
+#score {
+  font-size: 22px;
+  color: #0ff;
+}
+
+.light #score {
+  color: #007777;
+}
+
+button {
+  padding: 6px 10px;
+  font-size: 14px;
+  background: #0ff;
+  color: #000;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+#gameOverOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #ff0;
+  font-size: 24px;
+}
+#gameOverOverlay button {
+  margin-top: 15px;
+  padding: 10px 20px;
+  font-size: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="wrap">
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+  <div id="controls">
+    <div id="score">Score: 0</div>
+    <label>MTC <input type="checkbox" id="mtcCheckbox"></label>
+    <label>Speed <input type="range" id="speedSlider" min="1" max="10" value="2"></label>
+
+    <button id="pauseBtn">Pause</button>
+    <button id="themeBtn">Light Mode</button>
+    <button id="newGameBtn">New Game</button>
+  </div>
+</div>
+
+<div id="gameOverOverlay">
+  <div>Game Over!</div>
+  <div id="currentScore">Score: 0</div>
+  <div id="bestScore">Best: 0</div>
+  <button onclick="resetGame()">New Game</button>
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+const box = 20;
+let speed = parseInt(document.getElementById("speedSlider").value);
+let snake = [{visualX: 8*box, visualY: 8*box, gridX:8*box, gridY:8*box}];
+let direction = null;
+let food = {x: Math.floor(Math.random()*20)*box, y: Math.floor(Math.random()*20)*box};
+let score = 0;
+let bestScore = 0;
+let gameOver = false;
+let paused = false;
+let lastGridX = null;
+let lastGridY = null;
+
+let moveByCursor = false;
+let cursor = {x:0,y:0};
+let darkMode = true;
+
+const scoreEl = document.getElementById("score");
+const restartOverlay = document.getElementById("gameOverOverlay");
+const currentScoreEl = document.getElementById("currentScore");
+const bestScoreEl = document.getElementById("bestScore");
+
+document.getElementById("mtcCheckbox").addEventListener("change", e => moveByCursor = e.target.checked);
+document.getElementById("speedSlider").addEventListener("input", e => speed = parseInt(e.target.value));
+document.getElementById("newGameBtn").addEventListener("click", resetGame);
+
+document.getElementById("pauseBtn").addEventListener("click", ()=>{
+  paused = !paused;
+  document.getElementById("pauseBtn").innerText = paused ? "Resume" : "Pause";
+});
+
+document.getElementById("themeBtn").addEventListener("click", ()=>{
+  darkMode = !darkMode;
+  document.body.classList.toggle("light", !darkMode);
+  document.getElementById("themeBtn").innerText = darkMode ? "Light Mode" : "Dark Mode";
+});
+
+document.addEventListener("keydown",(e)=>{
+  if(gameOver || moveByCursor || paused) return;
+
+  let head=snake[0];
+  head.visualX = Math.round(head.visualX/box)*box;
+  head.visualY = Math.round(head.visualY/box)*box;
+  head.gridX = head.visualX;
+  head.gridY = head.visualY;
+
+  switch(e.key){
+    case "ArrowUp": case "w": case "W": direction="UP"; break;
+    case "ArrowDown": case "s": case "S": direction="DOWN"; break;
+    case "ArrowLeft": case "a": case "A": direction="LEFT"; break;
+    case "ArrowRight": case "d": case "D": direction="RIGHT"; break;
+  }
+});
+
+canvas.addEventListener("mousemove",(e)=>{
+  if(moveByCursor){
+    const rect=canvas.getBoundingClientRect();
+    cursor.x=e.clientX-rect.left;
+    cursor.y=e.clientY-rect.top;
+  }
+});
+
+function drawGrid(){
+  for(let y=0;y<20;y++){
+    for(let x=0;x<20;x++){
+      ctx.fillStyle=(x+y)%2===0?"#0a3":"#064";
+      ctx.fillRect(x*box,y*box,box,box);
+    }
+  }
+}
+
+function drawSnake(){
+  snake.forEach((s,i)=>{
+    ctx.fillStyle=i===0?"#0ff":"#0a0";
+    ctx.fillRect(s.visualX,s.visualY,box,box);
+  });
+}
+
+function drawFood(){
+  ctx.fillStyle="red";
+  ctx.fillRect(food.x,food.y,box,box);
+}
+
+function moveSnake(){
+  if(gameOver || paused || !direction) return;
+  let head=snake[0];
+
+  if(direction==="UP") head.visualY-=speed;
+  if(direction==="DOWN") head.visualY+=speed;
+  if(direction==="LEFT") head.visualX-=speed;
+  if(direction==="RIGHT") head.visualX+=speed;
+
+  const gridX=Math.round(head.visualX/box)*box;
+  const gridY=Math.round(head.visualY/box)*box;
+
+  if(gridX!==lastGridX || gridY!==lastGridY){
+    lastGridX=gridX; lastGridY=gridY;
+    snake.unshift({visualX:head.visualX, visualY:head.visualY, gridX, gridY});
+
+    let eaten=false;
+    if(head.visualX < food.x+box &&
+       head.visualX+box>food.x &&
+       head.visualY<food.y+box &&
+       head.visualY+box>food.y){
+         score++;
+         scoreEl.innerText="Score: "+score;
+         eaten=true;
+         food={x:Math.floor(Math.random()*20)*box,y:Math.floor(Math.random()*20)*box};
+    }
+    if(!eaten) snake.pop();
+
+    for(let i=1;i<snake.length;i++){
+      if(snake[i].gridX===gridX && snake[i].gridY===gridY){
+        triggerGameOver(); return;
+      }
+    }
+
+    if(gridX<0 || gridX>=400 || gridY<0 || gridY>=400){
+      triggerGameOver(); return;
+    }
+  }
+}
+
+function triggerGameOver(){
+  gameOver=true;
+  if(score>bestScore) bestScore=score;
+  currentScoreEl.innerText="Score: "+score;
+  bestScoreEl.innerText="Best: "+bestScore;
+  restartOverlay.style.display="flex";
+}
+
+function resetGame(){
+  snake=[{visualX:8*box,visualY:8*box,gridX:8*box,gridY:8*box}];
+  direction=null;
+  score=0;
+  gameOver=false;
+  paused=false;
+  lastGridX=null;
+  lastGridY=null;
+  restartOverlay.style.display="none";
+  scoreEl.innerText="Score: 0";
+  document.getElementById("pauseBtn").innerText="Pause";
+}
+
+function loop(){
+  drawGrid();
+  drawFood();
+  moveSnake();
+  drawSnake();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
