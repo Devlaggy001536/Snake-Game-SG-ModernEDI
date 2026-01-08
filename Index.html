@@ -3,31 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HTCJaSnake</title>
+<title>HTCJaSnake FS</title>
 
 <style>
-:root{
-  --bg:#0b1a12;
-  --panel:#10261a;
-  --accent:#00ff99;
-  --snake:#00d9ff;
-  --tail:#1fa36a;
-  --btn:#00ff99;
-}
-
 body{
   margin:0;
-  height:100vh;
   display:flex;
   justify-content:center;
   align-items:center;
-  background:
-    linear-gradient(90deg, rgba(0,255,150,.06) 1px, transparent 1px),
-    linear-gradient(rgba(0,255,150,.06) 1px, transparent 1px),
-    var(--bg);
-  background-size:40px 40px;
-  font-family:system-ui;
-  color:white;
+  height:100vh;
+  background:#0a0a0a;
+  color:#fff;
+  font-family:Arial,sans-serif;
+}
+
+.light{
+  background:#f2f2f2;
+  color:#000;
 }
 
 #wrap{
@@ -36,53 +28,69 @@ body{
 }
 
 canvas{
-  width:400px;
-  height:400px;
-  background:#08140d;
-  border:3px solid var(--accent);
+  background:#111;
+  border:3px solid #0ff;
+  border-radius:14px 14px 0 0; /* top only */
 }
 
-#ui{
-  background:var(--panel);
-  padding:14px;
-  border-radius:18px;
+.light canvas{
+  background:#fff;
+}
+
+#controls{
   display:flex;
   flex-direction:column;
   gap:10px;
-  min-width:170px;
-}
-
-#score{
-  font-size:18px;
-  color:var(--accent);
-}
-
-button,input{
-  border:none;
-  border-radius:14px;
-  padding:8px;
-  font-size:14px;
 }
 
 button{
-  background:var(--btn);
+  padding:6px 10px;
+  border:none;
   cursor:pointer;
+  background:#0ff;
+  color:#000;
+  border-radius:10px 10px 0 0;
 }
 
-#overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.85);
+input[type=range]{
+  width:140px;
+}
+
+#score{
+  font-size:20px;
+  color:#0ff;
+}
+
+.light #score{
+  color:#007777;
+}
+
+/* joystick */
+#joystickWrap{
   display:none;
-  justify-content:center;
-  align-items:center;
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
 }
 
-#gameover{
-  background:var(--panel);
-  padding:20px;
-  border-radius:22px;
-  text-align:center;
+#joystickBase{
+  width:120px;
+  height:120px;
+  background:rgba(0,255,255,.15);
+  border-radius:50%;
+  position:relative;
+}
+
+#joystickKnob{
+  width:50px;
+  height:50px;
+  background:#0ff;
+  border-radius:50%;
+  position:absolute;
+  left:35px;
+  top:35px;
+  touch-action:none;
 }
 </style>
 </head>
@@ -92,21 +100,25 @@ button{
 <div id="wrap">
   <canvas id="game" width="400" height="400"></canvas>
 
-  <div id="ui">
-    <div id="score">Score: 0 | Best: 0</div>
-    <label>Speed
-      <input type="range" id="speed" min="120" max="400" value="240">
+  <div id="controls">
+    <div id="score">Score: 0</div>
+
+    <label>
+      Speed
+      <input type="range" id="speedSlider" min="1" max="10" value="3">
     </label>
-    <button id="pause">Pause</button>
+
+    <button id="pauseBtn">Pause</button>
+    <button id="themeBtn">Light Mode</button>
+    <button id="mobileBtn">Mobile Mode</button>
     <button onclick="resetGame()">New Game</button>
   </div>
 </div>
 
-<div id="overlay">
-  <div id="gameover">
-    <h2>Game Over</h2>
-    <p id="finalScore"></p>
-    <button onclick="resetGame()">New Game</button>
+<!-- JOYSTICK -->
+<div id="joystickWrap">
+  <div id="joystickBase">
+    <div id="joystickKnob"></div>
   </div>
 </div>
 
@@ -115,191 +127,180 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const box = 20;
-const grid = 20;
+let delay = 150;
+let snake, food, direction, nextDir;
+let score = 0;
+let best = 0;
+let paused = false;
+let mobileMode = false;
 
-let snake, food, dir, score;
-let gameOver=false, paused=false;
-let speedDelay=240, lastMove=0;
+const scoreEl = document.getElementById("score");
+const slider = document.getElementById("speedSlider");
 
-let bestScore = Number(localStorage.getItem("htcja_best")) || 0;
-
-// --- Curved head drawer (rotates with direction) ---
-function drawCapRect(x,y,w,h,r,dir){
-  ctx.beginPath();
-
-  if(dir==="UP"){
-    ctx.moveTo(x+r,y);
-    ctx.lineTo(x+w-r,y);
-    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-    ctx.lineTo(x+w,y+h);
-    ctx.lineTo(x,y+h);
-    ctx.lineTo(x,y+r);
-    ctx.quadraticCurveTo(x,y,x+r,y);
-  }
-
-  if(dir==="DOWN"){
-    ctx.moveTo(x,y);
-    ctx.lineTo(x+w,y);
-    ctx.lineTo(x+w,y+h-r);
-    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-    ctx.lineTo(x+r,y+h);
-    ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-    ctx.lineTo(x,y);
-  }
-
-  if(dir==="LEFT"){
-    ctx.moveTo(x+r,y);
-    ctx.quadraticCurveTo(x,y,x,y+r);
-    ctx.lineTo(x,y+h-r);
-    ctx.quadraticCurveTo(x,y+h,x+r,y+h);
-    ctx.lineTo(x+w,y+h);
-    ctx.lineTo(x+w,y);
-  }
-
-  if(dir==="RIGHT"){
-    ctx.moveTo(x,y);
-    ctx.lineTo(x+w-r,y);
-    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-    ctx.lineTo(x+w,y+h-r);
-    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-    ctx.lineTo(x,y+h);
-    ctx.lineTo(x,y);
-  }
-
-  ctx.closePath();
-  ctx.fill();
+/* ---------- SPEED (RIGHT = FASTER) ---------- */
+function updateSpeed(){
+  delay = 220 - slider.value * 18;
 }
+slider.oninput = updateSpeed;
+updateSpeed();
 
-function updateScoreUI(){
-  document.getElementById("score").textContent =
-    `Score: ${score} | Best: ${bestScore}`;
-}
-
+/* ---------- INIT ---------- */
 function resetGame(){
-  snake=[{
-    gx:8, gy:8,
-    x:8*box, y:8*box,
-    tx:8*box, ty:8*box
-  }];
-  dir=null;
-  score=0;
-  gameOver=false;
-  paused=false;
-  document.getElementById("overlay").style.display="none";
-  updateScoreUI();
+  snake = [{x:8*box,y:8*box}];
+  direction = null;
+  nextDir = null;
+  score = 0;
+  food = spawnFood();
+  scoreEl.innerText = "Score: 0";
 }
-
 resetGame();
 
-document.getElementById("speed").oninput=e=>{
-  speedDelay = +e.target.value;
-};
-
-document.getElementById("pause").onclick=()=>{
-  paused=!paused;
-  pause.textContent = paused ? "Resume" : "Pause";
-};
-
-document.addEventListener("keydown",e=>{
-  if(gameOver || paused) return;
-
-  const map={
-    ArrowUp:"UP",ArrowDown:"DOWN",
-    ArrowLeft:"LEFT",ArrowRight:"RIGHT",
-    w:"UP",s:"DOWN",a:"LEFT",d:"RIGHT"
+/* ---------- FOOD ---------- */
+function spawnFood(){
+  return {
+    x:Math.floor(Math.random()*20)*box,
+    y:Math.floor(Math.random()*20)*box
   };
-  const next = map[e.key];
-  if(!next) return;
+}
 
-  if(snake.length>1){
-    if(
-      (dir==="UP"&&next==="DOWN")||
-      (dir==="DOWN"&&next==="UP")||
-      (dir==="LEFT"&&next==="RIGHT")||
-      (dir==="RIGHT"&&next==="LEFT")
-    ) return;
-  }
-  dir=next;
+/* ---------- INPUT (KEYBOARD) ---------- */
+document.addEventListener("keydown",e=>{
+  const map={
+    ArrowUp:"UP",w:"UP",
+    ArrowDown:"DOWN",s:"DOWN",
+    ArrowLeft:"LEFT",a:"LEFT",
+    ArrowRight:"RIGHT",d:"RIGHT"
+  };
+  const d = map[e.key];
+  if(d) setDirection(d);
 });
 
-function spawnFood(){
-  food={x:Math.floor(Math.random()*grid),y:Math.floor(Math.random()*grid)};
-}
-spawnFood();
-
-function update(){
-  if(!dir) return;
-
-  const h=snake[0];
-  let nx=h.gx, ny=h.gy;
-
-  if(dir==="UP")ny--;
-  if(dir==="DOWN")ny++;
-  if(dir==="LEFT")nx--;
-  if(dir==="RIGHT")nx++;
-
-  if(nx<0||ny<0||nx>=grid||ny>=grid){endGame();return;}
-
-  for(let i=1;i<snake.length;i++){
-    if(snake[i].gx===nx && snake[i].gy===ny){endGame();return;}
+/* ---------- DIRECTION LOGIC ---------- */
+function setDirection(dir){
+  if(snake.length>1){
+    if(
+      (dir==="UP"&&direction==="DOWN")||
+      (dir==="DOWN"&&direction==="UP")||
+      (dir==="LEFT"&&direction==="RIGHT")||
+      (dir==="RIGHT"&&direction==="LEFT")
+    ) return;
   }
-
-  snake.unshift({
-    gx:nx, gy:ny,
-    x:h.x, y:h.y,
-    tx:nx*box, ty:ny*box
-  });
-
-  if(nx===food.x && ny===food.y){
-    score++;
-    if(score>bestScore){
-      bestScore=score;
-      localStorage.setItem("htcja_best",bestScore);
-    }
-    updateScoreUI();
-    spawnFood();
-  } else snake.pop();
+  nextDir = dir;
 }
 
-function draw(){
-  ctx.clearRect(0,0,400,400);
-
-  for(let y=0;y<grid;y++){
-    for(let x=0;x<grid;x++){
-      ctx.fillStyle=(x+y)%2?"#0f3":"#084";
-      ctx.fillRect(x*box,y*box,box,box);
-    }
-  }
-
-  ctx.fillStyle="red";
-  ctx.beginPath();
-  ctx.arc(food.x*box+10,food.y*box+10,7,0,Math.PI*2);
-  ctx.fill();
-
-  snake.forEach((s,i)=>{
-    s.x+=(s.tx-s.x)*0.35;
-    s.y+=(s.ty-s.y)*0.35;
-    ctx.fillStyle=i===0?"var(--snake)":"var(--tail)";
-    if(i===0) drawCapRect(s.x,s.y,box,box,6,dir||"UP");
-    else ctx.fillRect(s.x,s.y,box,box);
-  });
-}
-
-function endGame(){
-  gameOver=true;
-  document.getElementById("finalScore").textContent =
-    `Score: ${score} | Best: ${bestScore}`;
-  document.getElementById("overlay").style.display="flex";
-}
-
+/* ---------- MOVE ---------- */
+let lastTime=0;
 function loop(t){
-  if(!paused&&!gameOver&&t-lastMove>speedDelay){
-    update(); lastMove=t;
+  if(t-lastTime>delay && !paused){
+    update();
+    lastTime=t;
   }
   draw();
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+function update(){
+  if(!nextDir) return;
+  direction = nextDir;
+
+  let head = {...snake[0]};
+  if(direction==="UP") head.y-=box;
+  if(direction==="DOWN") head.y+=box;
+  if(direction==="LEFT") head.x-=box;
+  if(direction==="RIGHT") head.x+=box;
+
+  // wall
+  if(head.x<0||head.y<0||head.x>=400||head.y>=400){
+    resetGame(); return;
+  }
+
+  // self
+  for(let s of snake){
+    if(s.x===head.x&&s.y===head.y){
+      resetGame(); return;
+    }
+  }
+
+  snake.unshift(head);
+
+  // eat
+  if(head.x===food.x&&head.y===food.y){
+    score++;
+    best=Math.max(best,score);
+    scoreEl.innerText=`Score: ${score} | Best: ${best}`;
+    food=spawnFood();
+  }else{
+    snake.pop();
+  }
+}
+
+/* ---------- DRAW ---------- */
+function draw(){
+  ctx.clearRect(0,0,400,400);
+
+  // grid
+  for(let y=0;y<20;y++){
+    for(let x=0;x<20;x++){
+      ctx.fillStyle=(x+y)%2?"#064":"#0a3";
+      ctx.fillRect(x*box,y*box,box,box);
+    }
+  }
+
+  // food
+  ctx.fillStyle="red";
+  ctx.fillRect(food.x,food.y,box,box);
+
+  // snake
+  snake.forEach((s,i)=>{
+    ctx.fillStyle=i===0?"#0ff":"#0a0";
+    ctx.fillRect(s.x,s.y,box,box);
+  });
+}
+
+/* ---------- UI ---------- */
+document.getElementById("pauseBtn").onclick=()=>{
+  paused=!paused;
+};
+
+document.getElementById("themeBtn").onclick=()=>{
+  document.body.classList.toggle("light");
+};
+
+document.getElementById("mobileBtn").onclick=()=>{
+  mobileMode=!mobileMode;
+  document.getElementById("joystickWrap").style.display=
+    mobileMode?"block":"none";
+};
+
+/* ---------- JOYSTICK ---------- */
+const knob=document.getElementById("joystickKnob");
+const base=document.getElementById("joystickBase");
+let dragging=false;
+
+knob.addEventListener("pointerdown",()=>dragging=true);
+document.addEventListener("pointerup",()=>{
+  dragging=false;
+  knob.style.left="35px";
+  knob.style.top="35px";
+});
+
+document.addEventListener("pointermove",e=>{
+  if(!dragging) return;
+  const r=base.getBoundingClientRect();
+  let x=e.clientX-r.left-60;
+  let y=e.clientY-r.top-60;
+
+  const ang=Math.atan2(y,x);
+  if(Math.abs(x)>Math.abs(y)){
+    setDirection(x>0?"RIGHT":"LEFT");
+  }else{
+    setDirection(y>0?"DOWN":"UP");
+  }
+
+  knob.style.left=35+x*0.3+"px";
+  knob.style.top=35+y*0.3+"px";
+});
 </script>
 
 </body>
