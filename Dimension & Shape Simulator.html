@@ -1,0 +1,531 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+    <title>Dimension Spinner Redux</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'neon-blue': '#00f3ff',
+                        'neon-pink': '#ff00ff',
+                        'neon-green': '#00ff88',
+                        'dark-bg': '#050505',
+                    },
+                    fontFamily: {
+                        'mono': ['"Courier New"', 'Courier', 'monospace'],
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+        
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            touch-action: none; 
+            font-family: 'Share Tech Mono', monospace; 
+            background-color: #050505; 
+            color: #00f3ff;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        .glass-panel {
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+        }
+
+        .btn-upgrade {
+            background: linear-gradient(135deg, rgba(0, 243, 255, 0.1), rgba(0, 243, 255, 0.05));
+            border: 1px solid rgba(0, 243, 255, 0.5);
+            transition: all 0.1s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-upgrade:active {
+            transform: scale(0.96);
+            background: rgba(0, 243, 255, 0.25);
+        }
+        .btn-upgrade:disabled {
+            opacity: 0.4;
+            filter: grayscale(1);
+            pointer-events: none;
+        }
+
+        .text-glow {
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.7);
+        }
+        .text-glow-pink {
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.7);
+        }
+        .text-glow-gold {
+            text-shadow: 0 0 10px rgba(255, 200, 0, 0.7);
+        }
+        
+        /* Floating money animation */
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-60px) scale(1.2); opacity: 0; }
+        }
+        .money-popup {
+            position: absolute;
+            pointer-events: none;
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 1.2rem;
+            animation: floatUp 0.8s ease-out forwards;
+            text-shadow: 0 0 5px #00ff88;
+            z-index: 20;
+        }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:"Courier New", Courier, monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}.absolute{position:absolute}.relative{position:relative}.inset-0{inset:0px}.z-10{z-index:10}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.mb-2{margin-bottom:0.5rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.mr-2{margin-right:0.5rem}.mt-1{margin-top:0.25rem}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-1{height:0.25rem}.h-24{height:6rem}.h-full{height:100%}.w-0{width:0px}.w-20{width:5rem}.w-full{width:100%}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}@keyframes pulse{50%{opacity:.5}}.animate-pulse-fast{animation:pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite}.grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.flex-col{flex-direction:column}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-2{gap:0.5rem}.overflow-hidden{overflow:hidden}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-xl{border-radius:0.75rem}.border-2{border-width:2px}.border-neon-blue{--tw-border-opacity:1;border-color:rgb(0 243 255 / var(--tw-border-opacity, 1))}.border-white\/30{border-color:rgb(255 255 255 / 0.3)}.bg-black\/90{background-color:rgb(0 0 0 / 0.9)}.bg-gray-800{--tw-bg-opacity:1;background-color:rgb(31 41 55 / var(--tw-bg-opacity, 1))}.bg-neon-blue{--tw-bg-opacity:1;background-color:rgb(0 243 255 / var(--tw-bg-opacity, 1))}.bg-neon-pink{--tw-bg-opacity:1;background-color:rgb(255 0 255 / var(--tw-bg-opacity, 1))}.bg-yellow-400{--tw-bg-opacity:1;background-color:rgb(250 204 21 / var(--tw-bg-opacity, 1))}.bg-yellow-500\/10{background-color:rgb(234 179 8 / 0.1)}.p-2{padding:0.5rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.py-4{padding-top:1rem;padding-bottom:1rem}.pb-8{padding-bottom:2rem}.text-center{text-align:center}.text-right{text-align:right}.text-2xl{font-size:1.5rem;line-height:2rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-\[10px\]{font-size:10px}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.uppercase{text-transform:uppercase}.leading-relaxed{line-height:1.625}.leading-tight{line-height:1.25}.tracking-tighter{letter-spacing:-0.05em}.tracking-widest{letter-spacing:0.1em}.text-black{--tw-text-opacity:1;color:rgb(0 0 0 / var(--tw-text-opacity, 1))}.text-gray-300{--tw-text-opacity:1;color:rgb(209 213 219 / var(--tw-text-opacity, 1))}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175 / var(--tw-text-opacity, 1))}.text-neon-blue{--tw-text-opacity:1;color:rgb(0 243 255 / var(--tw-text-opacity, 1))}.text-neon-pink{--tw-text-opacity:1;color:rgb(255 0 255 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.text-yellow-400{--tw-text-opacity:1;color:rgb(250 204 21 / var(--tw-text-opacity, 1))}.shadow-\[0_0_30px_rgba\(0\2c 243\2c 255\2c 0\.3\)\]{--tw-shadow:0 0 30px rgba(0,243,255,0.3);--tw-shadow-colored:0 0 30px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-300{transition-duration:300ms}.hover\:bg-white:hover{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.hover\:shadow-\[0_0_20px_rgba\(0\2c 243\2c 255\2c 0\.8\)\]:hover{--tw-shadow:0 0 20px rgba(0,243,255,0.8);--tw-shadow-colored:0 0 20px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.active\:scale-95:active{--tw-scale-x:.95;--tw-scale-y:.95;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.group:hover .group-hover\:text-neon-blue{--tw-text-opacity:1;color:rgb(0 243 255 / var(--tw-text-opacity, 1))}.group:hover .group-hover\:text-neon-pink{--tw-text-opacity:1;color:rgb(255 0 255 / var(--tw-text-opacity, 1))}.group:hover .group-hover\:text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}</style></head>
+<body>
+    <div id="game-container" class="relative w-full h-full">
+        <canvas id="gameCanvas" width="827" height="636"></canvas>
+        
+        <!-- UI Layer -->
+        <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 pb-8 safe-area-inset-bottom">
+            
+            <!-- Top HUD -->
+            <div id="hud" class="flex justify-between items-start hidden w-full">
+                <div class="glass-panel p-3 rounded-lg flex-1 mr-2">
+                    <div class="text-xs text-gray-400">BALANCE</div>
+                    <div class="text-2xl font-bold text-glow truncate">$<span id="score-display">0.00</span></div>
+                    <div class="text-xs text-neon-pink mt-1">INC: $<span id="income-rate">0.00</span>/s</div>
+                </div>
+                <div class="glass-panel p-3 rounded-lg text-right">
+                    <div class="text-xs text-gray-400">GEOMETRY</div>
+                    <div class="text-lg font-bold text-white truncate" id="shape-name">CIRCLE</div>
+                    <div class="text-xs text-neon-blue">MULT: <span id="shape-mult">x1</span></div>
+                </div>
+            </div>
+
+            <!-- Start Screen -->
+            <div id="start-screen" class="absolute inset-0 flex flex-col justify-center items-center pointer-events-auto bg-black/90 backdrop-blur-md z-50 p-6">
+                <div class="glass-panel p-8 rounded-2xl text-center w-full max-w-sm border-neon-blue border-2 shadow-[0_0_30px_rgba(0,243,255,0.3)]">
+                    <h1 class="text-4xl font-bold mb-2 text-glow tracking-tighter text-white">DIMENSION<br>SPINNER</h1>
+                    <div class="h-1 w-20 bg-neon-blue mx-auto mb-6"></div>
+                    <p class="text-gray-300 mb-8 text-sm leading-relaxed">
+                        Spin geometry. Generate revenue.<br>
+                        <span class="text-neon-pink font-bold">Evolving Geometry doubles (x2)</span><br>
+                        Income AND Rotation Speed.
+                    </p>
+                    <button id="start-btn" class="w-full bg-neon-blue text-black font-bold py-4 rounded-xl text-xl hover:bg-white hover:shadow-[0_0_20px_rgba(0,243,255,0.8)] transition duration-300 active:scale-95">INITIALIZE SYSTEM</button>
+                </div>
+            </div>
+
+            <!-- Bottom Controls -->
+            <div id="controls" class="grid grid-cols-3 gap-2 pointer-events-auto hidden w-full">
+                <!-- Speed Upgrade -->
+                <button id="btn-speed" class="btn-upgrade p-2 rounded-xl flex flex-col items-center justify-between group h-24">
+                    <div class="text-[10px] text-gray-400 uppercase tracking-widest">Rotation</div>
+                    <div class="text-sm font-bold text-white group-hover:text-neon-blue">SPEED</div>
+                    <div class="text-[10px] text-neon-blue">$<span id="cost-speed">10</span></div>
+                    <div class="h-1 w-full bg-gray-800 mt-1 rounded-full overflow-hidden">
+                        <div id="bar-speed" class="h-full bg-neon-blue w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <!-- Income Upgrade -->
+                <button id="btn-income" class="btn-upgrade p-2 rounded-xl flex flex-col items-center justify-between group h-24">
+                    <div class="text-[10px] text-gray-400 uppercase tracking-widest">Revenue</div>
+                    <div class="text-sm font-bold text-white group-hover:text-neon-pink">INCOME</div>
+                    <div class="text-[10px] text-neon-pink">$<span id="cost-income">50</span></div>
+                    <div class="h-1 w-full bg-gray-800 mt-1 rounded-full overflow-hidden">
+                        <div id="bar-income" class="h-full bg-neon-pink w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+
+                <!-- Shape Upgrade -->
+                <button id="btn-shape" class="btn-upgrade p-2 rounded-xl flex flex-col items-center justify-between group border-white/30 h-24 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-yellow-500/10 animate-pulse-fast"></div>
+                    <div class="text-[10px] text-gray-400 uppercase tracking-widest relative z-10">Evolve</div>
+                    <div class="text-sm font-bold text-yellow-400 group-hover:text-white relative z-10 leading-tight">x2 BOOST</div>
+                    <div class="text-[10px] text-yellow-400 relative z-10">$<span id="cost-shape">500</span></div>
+                    <div class="h-1 w-full bg-gray-800 mt-1 rounded-full overflow-hidden relative z-10">
+                        <div id="bar-shape" class="h-full bg-yellow-400 w-0 transition-all duration-300"></div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        /** 1. ASSETS */
+        // Using reliable, public domain / CC0 assets or generated sounds
+        const ASSETS = {
+            bgm: "https://storage.googleapis.com/rezona-ai-prod/games/assets/audio/0000/85d6d9e5-e421-407f-9856-f5bf14942ea0.mp3", 
+            sfx: {
+                money: "https://storage.googleapis.com/rezona-ai-prod/games/assets/audio/0000/6a85da48-ebe2-4973-b53a-e15cce5e2322.mp3",
+                upgrade: "https://storage.googleapis.com/rezona-ai-prod/games/assets/audio/0000/c0a906ee-ba0c-4c4a-a1c2-8177944f8ab6.mp3",
+                fail: "https://storage.googleapis.com/rezona-ai-prod/games/assets/audio/0000/d70feecf-daf5-4f87-a7e1-a47cc63d25f9.mp3",
+                evolve: "https://storage.googleapis.com/rezona-ai-prod/games/assets/audio/0000/c0a906ee-ba0c-4c4a-a1c2-8177944f8ab6.mp3" // Reusing upgrade for now, usually would want a bigger boom
+            }
+        };
+
+        /** 2. AUDIO SYSTEM */
+        class AudioController {
+            constructor() {
+                this.bgm = new Audio(ASSETS.bgm);
+                this.bgm.loop = true;
+                this.bgm.volume = 0.3;
+                this.sfx = {};
+                for (const [k, v] of Object.entries(ASSETS.sfx)) {
+                    this.sfx[k] = new Audio(v);
+                    this.sfx[k].preload = 'auto';
+                }
+                this.lastMoneySound = 0;
+            }
+            playBGM() { this.bgm.play().catch(e => console.log("BGM error:", e)); }
+            playSFX(key) {
+                const now = Date.now();
+                // Throttle money sound to prevent ear destruction at high speeds
+                if (key === 'money') {
+                    if (now - this.lastMoneySound < 80) return;
+                    this.lastMoneySound = now;
+                }
+                
+                if (this.sfx[key]) {
+                    const clone = this.sfx[key].cloneNode();
+                    clone.volume = key === 'money' ? 0.2 : 0.5;
+                    clone.play().catch(() => {});
+                }
+            }
+        }
+        const audio = new AudioController();
+
+        /** 3. GAME STATE */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Optimize
+        let width, height;
+        let gameActive = false;
+        
+        // Core Stats
+        let money = 0;
+        let logicalRotation = 0; // The true mathematical rotation for income
+        let visualRotation = 0;  // The clamped rotation for rendering (prevents strobing)
+        
+        // Upgrade Levels
+        let speedLevel = 1;
+        let incomeLevel = 1;
+        let shapeLevel = 0; 
+
+        // Constants & Config
+        const SHAPES = [
+            { name: "CIRCLE", sides: 0, color: "#00f3ff" },
+            { name: "TRIANGLE", sides: 3, color: "#ff00ff" },
+            { name: "SQUARE", sides: 4, color: "#00ff88" },
+            { name: "PENTAGON", sides: 5, color: "#ffaa00" },
+            { name: "HEXAGON", sides: 6, color: "#0099ff" },
+            { name: "OCTAGON", sides: 8, color: "#ff0055" },
+            { name: "DECAGON", sides: 10, color: "#aa00ff" },
+            { name: "HYPER-MESH", sides: 16, color: "#ffffff" }
+        ];
+
+        // --- NEW MATH LOGIC ---
+        // Base Speed: 0.02 rad/frame + upgrades
+        // Multiplier: 2 ^ shapeLevel
+        const getGeometryMultiplier = () => Math.pow(2, shapeLevel);
+        
+        const getSpeed = () => {
+            const baseSpeed = 0.02 + (speedLevel * 0.003);
+            return baseSpeed * getGeometryMultiplier();
+        };
+
+        const getIncome = () => {
+            const baseIncome = 10 * Math.pow(1.25, incomeLevel);
+            return baseIncome * getGeometryMultiplier();
+        };
+
+        // Costs
+        const getSpeedCost = () => Math.floor(10 * Math.pow(1.5, speedLevel));
+        const getIncomeCost = () => Math.floor(50 * Math.pow(1.6, incomeLevel));
+        // Increased cost scaling for Shape because it's now 4x powerful (2x speed * 2x income)
+        const getShapeCost = () => Math.floor(500 * Math.pow(8.0, shapeLevel)); 
+
+        // Background Particles
+        const particles = [];
+        for(let i=0; i<40; i++) {
+            particles.push({
+                x: Math.random(), y: Math.random(),
+                z: Math.random() * 2 + 0.5,
+                speed: Math.random() * 0.002 + 0.001
+            });
+        }
+
+        /** 4. RESIZE HANDLER */
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        /** 5. DRAWING FUNCTIONS */
+        function drawBackground() {
+            // Trail effect
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.25)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Particles
+            ctx.fillStyle = 'rgba(0, 243, 255, 0.15)';
+            particles.forEach(p => {
+                p.y += p.speed * (1 + shapeLevel); // Particles speed up with dimensions
+                if(p.y > 1) p.y = 0;
+                
+                const px = (p.x - 0.5) * width * p.z + width/2;
+                const py = (p.y - 0.5) * height * p.z + height/2;
+                const size = 2 * p.z;
+                
+                ctx.beginPath();
+                ctx.arc(px, py, size, 0, Math.PI*2);
+                ctx.fill();
+            });
+        }
+
+        function drawShape(cx, cy, radius, sides, rotation, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.lineJoin = 'round';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = color;
+
+            ctx.beginPath();
+            if (sides === 0) {
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            } else {
+                for (let i = 0; i <= sides; i++) {
+                    const theta = rotation + (i * 2 * Math.PI / sides);
+                    const x = cx + radius * Math.cos(theta);
+                    const y = cy + radius * Math.sin(theta);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // Inner Complexity
+            if (sides > 0 && shapeLevel > 0) {
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.4;
+                ctx.beginPath();
+                for (let i = 0; i < sides; i++) {
+                    const theta = rotation + (i * 2 * Math.PI / sides);
+                    const x = cx + radius * Math.cos(theta);
+                    const y = cy + radius * Math.sin(theta);
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(x, y);
+                    
+                    // Cross connections for high tiers
+                    if (shapeLevel > 2) {
+                        const theta2 = rotation + ((i+2) * 2 * Math.PI / sides);
+                        const x2 = cx + radius * Math.cos(theta2);
+                        const y2 = cy + radius * Math.sin(theta2);
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x2, y2);
+                    }
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        function spawnMoneyPopup(amount) {
+            // Throttle popups visually if speed is insane
+            if (Math.random() > 0.3 && getSpeed() > 0.5) return; 
+
+            const el = document.createElement('div');
+            el.className = 'money-popup';
+            // Format: $1.2k, $1.5M etc if large
+            let text = `$${amount.toFixed(0)}`;
+            if (amount > 1000) text = `$${(amount/1000).toFixed(1)}k`;
+            if (amount > 1000000) text = `$${(amount/1000000).toFixed(1)}M`;
+            
+            el.innerText = `+${text}`;
+            
+            const offsetX = (Math.random() - 0.5) * 120;
+            const offsetY = (Math.random() - 0.5) * 120;
+            el.style.left = `calc(50% + ${offsetX}px)`;
+            el.style.top = `calc(50% + ${offsetY}px)`;
+            document.getElementById('ui-layer').appendChild(el);
+            
+            setTimeout(() => el.remove(), 800);
+        }
+
+        /** 6. GAME LOOP */
+        function formatNumber(num) {
+            if (num < 1000) return num.toFixed(2);
+            if (num < 1000000) return (num/1000).toFixed(2) + 'k';
+            if (num < 1000000000) return (num/1000000).toFixed(2) + 'M';
+            return (num/1000000000).toFixed(2) + 'B';
+        }
+
+        function updateUI() {
+            document.getElementById('score-display').innerText = formatNumber(money);
+            
+            // Calc Income Rate
+            const spinsPerSec = (getSpeed() * 60) / (2 * Math.PI);
+            const incPerSec = getIncome() * spinsPerSec;
+            document.getElementById('income-rate').innerText = formatNumber(incPerSec);
+
+            // Update Costs
+            const sCost = getSpeedCost();
+            const iCost = getIncomeCost();
+            const shCost = getShapeCost();
+
+            document.getElementById('cost-speed').innerText = formatNumber(sCost);
+            document.getElementById('cost-income').innerText = formatNumber(iCost);
+            
+            const btnShape = document.getElementById('btn-shape');
+            if (shapeLevel >= SHAPES.length - 1) {
+                btnShape.disabled = true;
+                document.getElementById('cost-shape').innerText = "MAX";
+                btnShape.querySelector('span:nth-child(2)').innerText = "TRANSCENDED";
+            } else {
+                document.getElementById('cost-shape').innerText = formatNumber(shCost);
+                btnShape.disabled = money < shCost;
+            }
+
+            document.getElementById('btn-speed').disabled = money < sCost;
+            document.getElementById('btn-income').disabled = money < iCost;
+
+            // Bars
+            document.getElementById('bar-speed').style.width = Math.min(100, (speedLevel / 50) * 100) + '%';
+            document.getElementById('bar-income').style.width = Math.min(100, (incomeLevel / 50) * 100) + '%';
+            document.getElementById('bar-shape').style.width = Math.min(100, ((shapeLevel + 1) / SHAPES.length) * 100) + '%';
+            
+            // Shape Info
+            const mult = getGeometryMultiplier();
+            document.getElementById('shape-mult').innerText = `x${mult}`;
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+
+            const speed = getSpeed();
+            
+            // LOGICAL UPDATE (Math)
+            const prevLogical = logicalRotation;
+            logicalRotation += speed;
+            
+            const prevRotations = Math.floor(prevLogical / (Math.PI * 2));
+            const currRotations = Math.floor(logicalRotation / (Math.PI * 2));
+            const rotationsDiff = currRotations - prevRotations;
+
+            if (rotationsDiff > 0) {
+                const inc = getIncome();
+                const totalGain = inc * rotationsDiff; // Handle multiple spins per frame at high speeds
+                money += totalGain;
+                audio.playSFX('money');
+                spawnMoneyPopup(totalGain);
+            }
+
+            // VISUAL UPDATE (Rendering)
+            // If speed is insanely high, clamp visual rotation to avoid aliasing/strobing
+            // Max visually pleasing speed is around 0.3 rad/frame. 
+            // If actual speed > 0.3, we just spin at 0.3 visually to show "fast", 
+            // but the math above handles the actual income.
+            const visualSpeed = Math.min(speed, 0.4); 
+            visualRotation += visualSpeed;
+
+            // DRAW
+            drawBackground();
+            
+            const cx = width / 2;
+            const cy = height / 2;
+            const currentShape = SHAPES[shapeLevel];
+            
+            // Pulse effect
+            const pulse = 1 + Math.sin(visualRotation * 3) * 0.03;
+            const radius = Math.min(width, height) * 0.3 * pulse;
+
+            drawShape(cx, cy, radius, currentShape.sides, visualRotation, currentShape.color);
+
+            // Ghost shape for speed sensation
+            if (speed > 0.2) {
+                ctx.globalAlpha = 0.3;
+                drawShape(cx, cy, radius * 1.1, currentShape.sides, visualRotation - 0.2, currentShape.color);
+                ctx.globalAlpha = 1.0;
+            }
+
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+
+        /** 7. CONTROLS */
+        function buyUpgrade(type) {
+            if (type === 'speed') {
+                const cost = getSpeedCost();
+                if (money >= cost) {
+                    money -= cost;
+                    speedLevel++;
+                    audio.playSFX('upgrade');
+                }
+            } else if (type === 'income') {
+                const cost = getIncomeCost();
+                if (money >= cost) {
+                    money -= cost;
+                    incomeLevel++;
+                    audio.playSFX('upgrade');
+                }
+            } else if (type === 'shape') {
+                const cost = getShapeCost();
+                if (money >= cost && shapeLevel < SHAPES.length - 1) {
+                    money -= cost;
+                    shapeLevel++;
+                    
+                    const s = SHAPES[shapeLevel];
+                    const elName = document.getElementById('shape-name');
+                    elName.innerText = s.name;
+                    elName.style.color = s.color;
+                    
+                    // Huge effect for shape upgrade
+                    particles.forEach(p => p.speed *= 2);
+                    audio.playSFX('upgrade');
+                }
+            }
+        }
+
+        // Touch event handling for immediate response
+        const bindBtn = (id, type) => {
+            const btn = document.getElementById(id);
+            // Use pointerdown for fastest response, fallback to click
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault(); // Prevent ghost clicks
+                buyUpgrade(type);
+                // Visual press effect handled by CSS active state
+            });
+        };
+
+        bindBtn('btn-speed', 'speed');
+        bindBtn('btn-income', 'income');
+        bindBtn('btn-shape', 'shape');
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('hud').classList.add('flex');
+            document.getElementById('controls').classList.remove('hidden');
+            
+            audio.playBGM();
+            gameActive = true;
+            gameLoop();
+        });
+    });
+    </script>
+
+</body></html>
